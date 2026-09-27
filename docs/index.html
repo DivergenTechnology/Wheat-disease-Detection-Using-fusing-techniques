@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>WDED — Wheat Disease Early Detection · Field Risk Dashboard</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
 :root{
   --graphite:#1A2330; --graphite2:#232E40; --orange:#D4875A;
@@ -23,9 +24,22 @@ main{display:grid;grid-template-columns:1fr 320px;gap:16px;padding:16px 24px}
 .card{background:var(--graphite2);border:1px solid #2c394d;border-radius:10px;padding:12px 14px}
 .card .v{font-size:1.5rem;font-weight:650}
 .card .k{color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
+#trendPanel{grid-column:1/-1;background:var(--graphite2);border:1px solid #2c394d;border-radius:10px;padding:14px 16px}
+#trendPanel h2{font-size:.9rem;color:var(--orange);margin-bottom:8px}
+#trendPanel .sub{color:var(--muted);font-size:.78rem;margin-bottom:8px}
+#trendChartWrap{height:200px;position:relative}
 #map{height:520px;border-radius:10px;border:1px solid #2c394d}
-.panel{background:var(--graphite2);border:1px solid #2c394d;border-radius:10px;padding:14px;max-height:560px;overflow:auto}
+.panel{background:var(--graphite2);border:1px solid #2c394d;border-radius:10px;padding:14px;max-height:640px;overflow:auto}
 .panel h2{font-size:.9rem;margin-bottom:8px;color:var(--orange)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.chip{border:1px solid #33415a;background:var(--graphite);color:var(--muted);border-radius:999px;
+      padding:3px 12px;font-size:.75rem;cursor:pointer;user-select:none}
+.chip.on{border-color:var(--orange);color:var(--ink)}
+.chip .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:0}
+select{background:var(--graphite);color:var(--ink);border:1px solid #33415a;border-radius:8px;
+       padding:4px 8px;font-size:.78rem}
+button.act{background:var(--orange);color:#1A2330;font-weight:600;border:none;border-radius:8px;
+           padding:5px 12px;font-size:.78rem;cursor:pointer}
 ul.review{list-style:none}
 ul.review li{padding:8px 0;border-bottom:1px dashed #33415a;font-size:.85rem}
 .badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.7rem;font-weight:600;color:#fff}
@@ -39,6 +53,10 @@ ul.review li{padding:8px 0;border-bottom:1px dashed #33415a;font-size:.85rem}
 .foot{padding:10px 24px 26px;color:var(--muted);font-size:.75rem}
 .warn{background:#3a2b1c;border:1px solid var(--orange);color:#f2c9a8;border-radius:10px;padding:12px 16px;margin:16px 24px 0;font-size:.85rem}
 label.tgl{display:flex;gap:8px;align-items:center;font-size:.8rem;color:var(--muted);margin-top:12px}
+.trendchip{font-size:.72rem;border-radius:999px;padding:1px 8px;font-weight:600}
+.tw{background:#4a2c17;color:#ffb27d}.ts{background:#263449;color:#9AA7B5}
+.ti{background:#1d3a22;color:#8fd694}.tn{background:#3a2f55;color:#c3b0ff}
+.arrow{font-weight:700}
 </style>
 </head>
 <body>
@@ -52,12 +70,31 @@ label.tgl{display:flex;gap:8px;align-items:center;font-size:.8rem;color:var(--mu
 </div>
 <main>
   <div class="cards" id="cards"></div>
-  <div id="map"></div>
+  <div id="trendPanel" style="display:none">
+    <h2>Multi-flight risk trend</h2>
+    <div class="sub" id="trendSub"></div>
+    <div id="trendChartWrap"><canvas id="trendChart"></canvas></div>
+  </div>
+  <div>
+    <div class="filters">
+      <span style="font-size:.75rem;color:var(--muted)">TIER</span>
+      <span class="chip on" data-tier="all">all</span>
+      <span class="chip" data-tier="low"><span class="dot" style="background:var(--low)"></span>low</span>
+      <span class="chip" data-tier="moderate"><span class="dot" style="background:var(--moderate)"></span>moderate</span>
+      <span class="chip" data-tier="high"><span class="dot" style="background:var(--high)"></span>high</span>
+      <span class="chip" data-tier="critical"><span class="dot" style="background:var(--critical)"></span>critical</span>
+      <select id="diseaseSel" title="filter by dominant disease"><option value="all">all diseases</option></select>
+      <button class="act" id="csvBtn" title="download current tiles as CSV">⬇ CSV</button>
+    </div>
+    <div id="map"></div>
+  </div>
   <aside class="panel">
     <h2>Expert review queue</h2>
     <ul class="review" id="review"></ul>
     <h2 style="margin-top:16px">Dominant disease</h2>
     <div class="bars" id="bars"></div>
+    <h2 style="margin-top:16px">Tile trend signal</h2>
+    <div class="bars" id="trendBars" style="color:var(--muted);font-size:.8rem">single flight — no trend yet</div>
     <label class="tgl"><input type="checkbox" id="heat" checked/> show attention heatmap</label>
     <div class="legend">
       <span><i style="background:var(--low)"></i>low</span>
@@ -75,6 +112,12 @@ label.tgl{display:flex;gap:8px;align-items:center;font-size:.8rem;color:var(--mu
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const TIER_COLOR={low:'#2E7D32',moderate:'#F9A825',high:'#EF6C00',critical:'#B71C1C'};
+const TREND_META={
+  worsening:{cls:'tw',arrow:'▲',label:'worsening'},
+  stable:{cls:'ts',arrow:'▬',label:'stable'},
+  improving:{cls:'ti',arrow:'▼',label:'improving'},
+  new:{cls:'tn',arrow:'★',label:'new tile'}
+};
 const map=L.map('map',{zoomControl:true});
 const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'});
 const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'});
@@ -87,17 +130,113 @@ heatToggle.addEventListener('change',()=>{
   if(heatLayer){ heatToggle.checked ? heatLayer.addTo(map) : map.removeLayer(heatLayer); }
 });
 
+const state={tier:'all',disease:'all'};
+let baseLayer=null, PROPS=[], TREND=null, SUMMARY=null;
+
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+function sparkline(risks,color){
+  if(!risks||risks.length<2) return '';
+  const w=76,h=20,p=2;
+  const min=Math.min(...risks),max=Math.max(...risks),span=(max-min)||1;
+  const pts=risks.map((r,i)=>[p+i*(w-2*p)/(risks.length-1), h-p-(r-min)/span*(h-2*p)]);
+  const path=pts.map(pt=>pt.map(v=>v.toFixed(1)).join(',')).join(' ');
+  const last=pts[pts.length-1];
+  return `<svg width="${w}" height="${h}" style="vertical-align:-4px">
+    <polyline points="${path}" fill="none" stroke="${color}" stroke-width="1.6" opacity=".85"/>
+    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.4" fill="${color}"/></svg>`;
+}
+
+function trendOf(tileId){ return TREND && TREND.tiles ? TREND.tiles[tileId] : null; }
+
+function trendBadge(t){
+  const m=TREND_META[t.trend]||TREND_META.stable;
+  const delta=(t.delta==null)?'':` ${(t.delta>0?'+':'')}${(100*t.delta).toFixed(1)}pp`;
+  return `<span class="trendchip ${m.cls}"><span class="arrow">${m.arrow}</span>${m.label}${delta}</span>`;
+}
+
 function popup(p){
   const driver=esc((p.dominant_disease||'').replace(/_/g,' '));
-  return `<div style="font:12px/1.5 system-ui;min-width:230px">
+  const t=trendOf(p.tile_id);
+  const trendLine=t?`<br/>trend (first→last flight): ${trendBadge(t)} ${sparkline(t.risks, TIER_COLOR[p.tier]||'#D4875A')}`:'';
+  const urgencyLine=p.urgency?`<br/>urgency: <b>${esc(p.urgency)}</b>${p.rescout_days?` · re-scout ≤ ${esc(p.rescout_days)} d`:''}`:'';
+  return `<div style="font:12px/1.5 system-ui;min-width:250px">
     <b>${esc(p.tile_id)}</b> — <span class="badge b-${esc(p.tier)}">${esc(p.tier)}</span>
     ${p.needs_expert_review?' <span class="badge" style="background:#6a1b9a">review</span>':''}<br/>
     overall risk: <b>${(100*p.risk).toFixed(1)}%</b> · driver: ${driver}<br/>
-    model ${Math.round(100*p.model_prob)}% · uncertainty ${p.uncertainty} · attention ${p.attention}<br/>
+    model ${Math.round(100*p.model_prob)}% · uncertainty ${p.uncertainty} · attention ${p.attention}${trendLine}${urgencyLine}<br/>
     <i>${esc(p.recommendation||'')}</i><br/>
     <small>${esc(p.disease_note||'')}</small>
   </div>`;
+}
+
+function applyFilters(){
+  if(!baseLayer) return;
+  baseLayer.eachLayer(l=>{
+    const p=l.feature.properties;
+    const matchTier=state.tier==='all'||p.tier===state.tier;
+    const matchDisease=state.disease==='all'||p.dominant_disease===state.disease;
+    const on=matchTier&&matchDisease;
+    l.setStyle({fillOpacity:on?0.55:0.04, opacity:on?1:0.15, color:on?'#E8ECF1':'#555'});
+  });
+}
+
+function exportCSV(){
+  if(!PROPS.length) return;
+  const cols=['tile_id','risk','tier','dominant_disease','uncertainty','attention','needs_expert_review','urgency','rescout_days'];
+  const rows=PROPS.map(p=>cols.map(c=>String(p[c]??'').replace(/[,\n;]/g,' ')).join(','));
+  const csv=[cols.join(','),...rows].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`wded_tiles_${(SUMMARY&&SUMMARY.flight_date)||'latest'}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+document.getElementById('csvBtn').addEventListener('click',exportCSV);
+
+document.querySelectorAll('.chip[data-tier]').forEach(ch=>{
+  ch.addEventListener('click',()=>{
+    document.querySelectorAll('.chip[data-tier]').forEach(c=>c.classList.remove('on'));
+    ch.classList.add('on');
+    state.tier=ch.dataset.tier;
+    applyFilters();
+  });
+});
+document.getElementById('diseaseSel').addEventListener('change',e=>{
+  state.disease=e.target.value; applyFilters();
+});
+
+function renderTrendPanel(){
+  if(!TREND||!TREND.field_series||TREND.field_series.length<1) return;
+  document.getElementById('trendPanel').style.display='block';
+  const s=TREND.field_series;
+  document.getElementById('trendSub').textContent=
+    `${TREND.n_dates} flights ${TREND.first_date} → ${TREND.last_date} · field-level ` +
+    `${TREND.field_trend} (${(100*TREND.field_delta>=0?'+':'')}${(100*TREND.field_delta).toFixed(1)}pp) · `+
+    `${TREND.tile_trend_counts.worsening} tiles worsening (early escalation signal)`;
+  const labels=s.map(x=>x.date.slice(5));
+  const hc=s.map(x=>(x.tier_counts.high||0)+(x.tier_counts.critical||0));
+  new Chart(document.getElementById('trendChart'),{
+    data:{labels,datasets:[
+      {type:'line',label:'field mean risk',data:s.map(x=>Math.round(100*x.mean_risk)),
+       borderColor:'#D4875A',backgroundColor:'rgba(212,135,90,.15)',fill:true,
+       tension:.3,yAxisID:'y',pointRadius:4},
+      {type:'bar',label:'high + critical tiles',data:hc,
+       backgroundColor:'rgba(239,108,0,.45)',borderRadius:4,yAxisID:'y1'}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{
+        y:{min:0,max:100,title:{display:true,text:'mean risk %',color:'#9AA7B5'},ticks:{color:'#9AA7B5'},grid:{color:'#2c394d'}},
+        y1:{position:'right',beginAtZero:true,title:{display:true,text:'tiles',color:'#9AA7B5'},ticks:{color:'#9AA7B5',precision:0},grid:{display:false}},
+        x:{ticks:{color:'#9AA7B5'},grid:{color:'#2c394d'}}},
+      plugins:{legend:{labels:{color:'#E8ECF1',boxWidth:12,font:{size:11}}}}}
+  });
+  const c=TREND.tile_trend_counts;
+  const cmax=Math.max(1,c.worsening,c.stable,c.improving,c.new);
+  const w=v=>Math.round(140*v/cmax);
+  document.getElementById('trendBars').innerHTML=
+    `<div class="bar-row"><span style="width:110px">▲ worsening</span><span class="bar" style="background:var(--high);width:${w(c.worsening)}px"></span><span>${c.worsening}</span></div>`+
+    `<div class="bar-row"><span style="width:110px">▬ stable</span><span class="bar" style="width:${w(c.stable)}px"></span><span>${c.stable}</span></div>`+
+    `<div class="bar-row"><span style="width:110px">▼ improving</span><span class="bar" style="background:var(--low);width:${w(c.improving)}px"></span><span>${c.improving}</span></div>`+
+    `<div class="bar-row"><span style="width:110px">★ new</span><span class="bar" style="background:#7e57c2;width:${w(c.new)}px"></span><span>${c.new}</span></div>`;
 }
 
 async function load(){
@@ -114,8 +253,12 @@ async function load(){
     map.setView([8.75,39.0],12);
     return;
   }
+  SUMMARY=summary;
+  TREND=await fetch('./data/trend.json').then(r=>r.ok?r.json():null).catch(()=>null);
+
+  const tchip=TREND?` · trend: ${TREND.n_dates} flights`:' · single flight';
   document.getElementById('runmeta').textContent=
-    `site: ${summary.site} · flight ${summary.flight_date} · generated ${(summary.generated_at||'').slice(0,10)}`;
+    `site: ${summary.site} · flight ${summary.flight_date} · generated ${(summary.generated_at||'').slice(0,10)}${tchip}`;
 
   const tc=summary.tier_counts||{};
   const cards=[
@@ -127,18 +270,20 @@ async function load(){
     ['Low',tc.low||0],
     ['Review queue',summary.expert_review_count]
   ];
+  if(TREND) cards.push(['Worsening tiles',TREND.tile_trend_counts.worsening]);
   document.getElementById('cards').innerHTML=cards.map(([k,v])=>
     `<div class="card"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
 
-  const base=L.geoJSON(fc,{
+  baseLayer=L.geoJSON(fc,{
     style:f=>({color:'#E8ECF1',weight:1,fillColor:TIER_COLOR[f.properties.tier]||'#888',fillOpacity:.55}),
     onEachFeature:(f,l)=>l.bindPopup(popup(f.properties))
   }).addTo(map);
+  PROPS=fc.features.map(f=>f.properties);
 
   L.geoJSON({type:'FeatureCollection',features:fc.features.filter(f=>f.properties.needs_expert_review)},
     {style:()=>({color:'#b388ff',weight:2,dashArray:'5 4',fill:false})}).addTo(map);
 
-  map.fitBounds(base.getBounds(),{padding:[12,12]});
+  map.fitBounds(baseLayer.getBounds(),{padding:[12,12]});
 
   heatLayer=L.geoJSON(heat,{pointToLayer:(f,l)=>L.circleMarker(l,{
     radius:6+16*(f.properties.weight||0),
@@ -146,10 +291,14 @@ async function load(){
     fillOpacity:.25+(f.properties.weight||0)*.5})});
   if(heatToggle.checked){ heatLayer.addTo(map); }
 
-  const rev=fc.features.map(f=>f.properties).filter(p=>p.needs_expert_review).sort((a,b)=>b.risk-a.risk);
+  const rev=PROPS.filter(p=>p.needs_expert_review).sort((a,b)=>b.risk-a.risk);
   document.getElementById('review').innerHTML= rev.length
-    ? rev.map(p=>`<li><b>${esc(p.tile_id)}</b> <span class="badge b-${esc(p.tier)}">${esc(p.tier)}</span><br/>
-        risk ${(100*p.risk).toFixed(1)}% · ${esc((p.dominant_disease||'').replace(/_/g,' '))}</li>`).join('')
+    ? rev.map(p=>{
+        const t=trendOf(p.tile_id);
+        return `<li><b>${esc(p.tile_id)}</b> <span class="badge b-${esc(p.tier)}">${esc(p.tier)}</span>
+        ${t?` ${trendBadge(t)}`:''}<br/>
+        risk ${(100*p.risk).toFixed(1)}% · ${esc((p.dominant_disease||'').replace(/_/g,' '))}</li>`;
+      }).join('')
     : '<li>No tiles flagged — uncertainty and open-set checks passed.</li>';
 
   const dd=summary.dominant_disease_counts||{};
@@ -157,6 +306,13 @@ async function load(){
   document.getElementById('bars').innerHTML=Object.entries(dd).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
     `<div class="bar-row"><span style="width:110px">${esc(k.replace(/_/g,' '))}</span>
      <span class="bar" style="width:${Math.round(140*v/max)}px"></span><span>${v}</span></div>`).join('');
+  const sel=document.getElementById('diseaseSel');
+  Object.keys(dd).sort().forEach(d=>{
+    const o=document.createElement('option'); o.value=d;
+    o.textContent=d.replace(/_/g,' '); sel.appendChild(o);
+  });
+
+  renderTrendPanel();
 }
 load();
 </script>

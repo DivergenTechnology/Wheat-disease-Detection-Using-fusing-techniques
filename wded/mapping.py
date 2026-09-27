@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +53,8 @@ def build_map_overlay(flight, fused, out_dir: Path):
             "attention": round(float(row["attention"]), 4),
             "needs_expert_review": bool(row["needs_expert_review"]),
             "recommendation": row["recommendation"],
+            "urgency": row.get("urgency", ""),
+            "rescout_days": int(row.get("rescout_days", 0)) if pd.notna(row.get("rescout_days")) else None,
             "disease_note": row["disease_note"],
         }
         feats.append(_feature(lonlat[i], props))

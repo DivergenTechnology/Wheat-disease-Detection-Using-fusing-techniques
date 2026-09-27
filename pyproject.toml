@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wded"
-version = "0.2.0"
+version = "0.3.0"
 description = "Early detection of wheat diseases from UAV multispectral imagery fused with lagged weather and soil covariates"
 readme = "README.md"
 requires-python = ">=3.10"

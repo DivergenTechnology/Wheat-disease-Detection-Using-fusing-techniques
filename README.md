@@ -71,6 +71,15 @@ python -m wded.cli demo --publish-to docs/data
 # Exercise the real GeoTIFF reader (no GDAL / rasterio required)
 python -m wded.cli demo --format geotiff
 
+# Simulate a weekly flight series (date + hotspot intensity overrides)
+python -m wded.cli demo --out runs/flight_d1 --date 2026-09-04 --hotspot-scale 0.85
+python -m wded.cli demo --out runs/flight_d2 --date 2026-09-11 --hotspot-scale 1.0
+python -m wded.cli demo --out runs/flight_d3 --date 2026-09-18 --hotspot-scale 1.2
+
+# Build the multi-date trend artifact for the dashboard
+python -m wded.cli trend --runs runs/flight_d1 runs/flight_d2 runs/flight_d3 \
+    --publish-to docs/data
+
 # Run the test suite
 pytest -q
 ```
@@ -89,6 +98,27 @@ top-risk tiles and the expert review queue. Regenerate or relocate it any time:
 ```bash
 wded report --run runs/demo --out reports/bishoftu_2027-07-14.html
 ```
+
+## Multi-flight trend analysis
+
+Early detection is about *direction of travel*: a tile at moderate risk that is
+worsening flight-over-flight deserves attention before the field-level mean moves.
+Point `wded trend` at one output directory per flight date and it produces
+`trend.json`:
+
+- a field-level series (mean risk, tier counts, review queue size per date)
+- per-tile risk series classified as **worsening / stable / improving / new**
+  (delta between first and last flight, ±0.02 noise band)
+
+```bash
+wded trend --runs runs/flight_d1 runs/flight_d2 runs/flight_d3 \
+    --out runs/trend/trend.json --publish-to docs/data
+```
+
+The dashboard renders the trend as a dual-axis chart (mean risk line + high/critical
+tile counts), per-tile sparklines and delta badges inside each popup, and a
+tile-trend signal panel. Recommendations additionally carry an urgency label and
+a re-scouting cadence (`rescout_days`) per tier.
 
 ## Using real flights and the trained model
 
@@ -121,7 +151,10 @@ The dashboard is served from `docs/` → <https://divergentechnology.github.io/W
 
 It renders the fused risk polygons, the Grad-CAM attention layer, the expert review queue,
 and dominant-disease distribution — all from the committed artifacts in `docs/data/`.
-To publish a new run: `python -m wded.cli run ... --publish-to docs/data`, commit, push.
+When `trend.json` is present it adds the multi-flight trend chart, per-tile sparklines
+and worsening/stable/improving badges. Tiles can be filtered by tier and dominant
+disease, and the current selection exported as CSV. To publish a new run:
+`python -m wded.cli run ... --publish-to docs/data`, commit, push.
 
 ## Decision logic (transparent by design)
 

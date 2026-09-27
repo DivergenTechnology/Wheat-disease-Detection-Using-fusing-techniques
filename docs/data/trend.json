@@ -1,0 +1,308 @@
+{
+  "generated_at": "2026-09-27T19:40:27+00:00",
+  "site": "bishoftu",
+  "n_dates": 3,
+  "first_date": "2026-09-04",
+  "last_date": "2026-09-18",
+  "field_series": [
+    {
+      "date": "2026-09-04",
+      "mean_risk": 0.4056,
+      "tier_counts": {
+        "critical": 0,
+        "high": 3,
+        "moderate": 13,
+        "low": 0
+      },
+      "expert_review_count": 5
+    },
+    {
+      "date": "2026-09-11",
+      "mean_risk": 0.4123,
+      "tier_counts": {
+        "critical": 0,
+        "high": 3,
+        "moderate": 13,
+        "low": 0
+      },
+      "expert_review_count": 7
+    },
+    {
+      "date": "2026-09-18",
+      "mean_risk": 0.4208,
+      "tier_counts": {
+        "critical": 0,
+        "high": 3,
+        "moderate": 13,
+        "low": 0
+      },
+      "expert_review_count": 7
+    }
+  ],
+  "field_delta": 0.0152,
+  "field_trend": "stable",
+  "tile_trend_counts": {
+    "worsening": 4,
+    "stable": 12,
+    "improving": 0,
+    "new": 0
+  },
+  "tiles": {
+    "T0000": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.3864,
+        0.3904,
+        0.3956
+      ],
+      "delta": 0.0092,
+      "trend": "stable",
+      "last_tier": "moderate",
+      "last_disease": "septoria"
+    },
+    "T0001": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.4084,
+        0.4191,
+        0.44
+      ],
+      "delta": 0.0316,
+      "trend": "worsening",
+      "last_tier": "moderate",
+      "last_disease": "septoria"
+    },
+    "T0002": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.3976,
+        0.4044,
+        0.409
+      ],
+      "delta": 0.0115,
+      "trend": "stable",
+      "last_tier": "moderate",
+      "last_disease": "septoria"
+    },
+    "T0003": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.3665,
+        0.3665,
+        0.3665
+      ],
+      "delta": 0.0,
+      "trend": "stable",
+      "last_tier": "moderate",
+      "last_disease": "stripe_rust"
+    },
+    "T0004": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.4572,
+        0.4826,
+        0.5098
+      ],
+      "delta": 0.0526,
+      "trend": "worsening",
+      "last_tier": "high",
+      "last_disease": "stem_rust"
+    },
+    "T0005": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.5615,
+        0.5814,
+        0.6008
+      ],
+      "delta": 0.0393,
+      "trend": "worsening",
+      "last_tier": "high",
+      "last_disease": "stem_rust"
+    },
+    "T0006": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.3895,
+        0.3946,
+        0.4014
+      ],
+      "delta": 0.0119,
+      "trend": "stable",
+      "last_tier": "moderate",
+      "last_disease": "stripe_rust"
+    },
+    "T0007": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.373,
+        0.373,
+        0.373
+      ],
+      "delta": 0.0001,
+      "trend": "stable",
+      "last_tier": "moderate",
+      "last_disease": "septoria"
+    },
+    "T0008": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.3798,
+        0.3811,
+        0.3831
+      ],
+      "delta": 0.0033,
+      "trend": "stable",
+      "last_tier": "moderate",
+      "last_disease": "septoria"
+    },
+    "T0009": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.3794,
+        0.3832,
+        0.3881
+      ],
+      "delta": 0.0087,
+      "trend": "stable",
+      "last_tier": "moderate",
+      "last_disease": "stripe_rust"
+    },
+    "T0010": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.462,
+        0.4765,
+        0.5015
+      ],
+      "delta": 0.0395,
+      "trend": "worsening",
+      "last_tier": "high",
+      "last_disease": "stripe_rust"
+    },
+    "T0011": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.3983,
+        0.4039,
+        0.409
+      ],
+      "delta": 0.0108,
+      "trend": "stable",
+      "last_tier": "moderate",
+      "last_disease": "stripe_rust"
+    },
+    "T0012": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.3685,
+        0.3685,
+        0.3685
+      ],
+      "delta": 0.0,
+      "trend": "stable",
+      "last_tier": "moderate",
+      "last_disease": "septoria"
+    },
+    "T0013": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.3809,
+        0.3814,
+        0.3815
+      ],
+      "delta": 0.0006,
+      "trend": "stable",
+      "last_tier": "moderate",
+      "last_disease": "septoria"
+    },
+    "T0014": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.4006,
+        0.409,
+        0.4183
+      ],
+      "delta": 0.0177,
+      "trend": "stable",
+      "last_tier": "moderate",
+      "last_disease": "stripe_rust"
+    },
+    "T0015": {
+      "dates": [
+        "2026-09-04",
+        "2026-09-11",
+        "2026-09-18"
+      ],
+      "risks": [
+        0.38,
+        0.3814,
+        0.3868
+      ],
+      "delta": 0.0068,
+      "trend": "stable",
+      "last_tier": "moderate",
+      "last_disease": "stripe_rust"
+    }
+  }
+}

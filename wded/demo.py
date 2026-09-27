@@ -63,7 +63,24 @@ def _write_geotiff_bands(flight: Path, bands: dict, meta: dict) -> None:
         )
 
 
-def generate_sample_data(root: Path, seed: int = 42, fmt: str = "npz") -> dict:
+def generate_sample_data(
+    root: Path,
+    seed: int = 42,
+    fmt: str = "npz",
+    capture_date: str | None = None,
+    hotspot_scale: float = 1.0,
+) -> dict:
+    """Generate the synthetic bundle.
+
+    ``capture_date`` overrides the flight date (metadata, GeoTIFF DateTime and
+    the 60-day weather window); ``hotspot_scale`` scales the disease hotspots
+    so multi-date demo scenarios can simulate an epidemic ramp.
+    """
+    meta = dict(SITE_META)
+    if capture_date:
+        date.fromisoformat(capture_date)  # validate early, fail fast
+        meta["capture_date"] = capture_date
+
     root = Path(root)
     flight = root / "flight"
     flight.mkdir(parents=True, exist_ok=True)
@@ -74,9 +91,9 @@ def generate_sample_data(root: Path, seed: int = 42, fmt: str = "npz") -> dict:
     def blob(cx, cy, r):
         return np.exp(-(((xx - cx) ** 2 + (yy - cy) ** 2) / (r * r)))
 
-    stem = 0.65 * blob(38, 44, 20)
-    stripe = 0.55 * blob(88, 90, 16)
-    sept = 0.45 * blob(70, 30, 12)
+    stem = 0.65 * hotspot_scale * blob(38, 44, 20)
+    stripe = 0.55 * hotspot_scale * blob(88, 90, 16)
+    sept = 0.45 * hotspot_scale * blob(70, 30, 12)
     disease = np.clip(stem + stripe + sept, 0, 1)
     healthy = 1.0 - disease
 
@@ -105,17 +122,17 @@ def generate_sample_data(root: Path, seed: int = 42, fmt: str = "npz") -> dict:
         ),
     }
     if fmt == "geotiff":
-        _write_geotiff_bands(flight, bands, SITE_META)
+        _write_geotiff_bands(flight, bands, meta)
     else:
         np.savez_compressed(flight / "flight.npz", **bands)
-        (flight / "flight_meta.json").write_text(json.dumps(SITE_META, indent=2))
+        (flight / "flight_meta.json").write_text(json.dumps(meta, indent=2))
 
     model_dir = root / "models" / "trained"
     model_dir.mkdir(parents=True, exist_ok=True)
     (model_dir / "mock_model.json").write_text(json.dumps({"type": "mock", "seed": seed}))
 
     # --- 60 days of station weather ending on the capture date -----------------
-    end = date.fromisoformat(SITE_META["capture_date"])
+    end = date.fromisoformat(meta["capture_date"])
     rows = []
     tmean = 19.0
     for i in range(60):

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import shutil
 from pathlib import Path
 
 from .config import PipelineConfig
@@ -24,6 +25,10 @@ def main(argv=None) -> int:
     demo.add_argument("--seed", type=int, default=42)
     demo.add_argument("--format", choices=["npz", "geotiff"], default="npz",
                       help="synthetic flight format (geotiff exercises the real raster reader)")
+    demo.add_argument("--date", default=None, dest="capture_date",
+                      help="capture date ISO (overrides the default flight date)")
+    demo.add_argument("--hotspot-scale", type=float, default=1.0,
+                      help="scales disease hotspot intensity (multi-date scenarios)")
     demo.add_argument("--publish-to", default=None, help="copy dashboard artifacts to this directory")
 
     run = sub.add_parser("run", help="run the pipeline on a real flight bundle")
@@ -40,10 +45,22 @@ def main(argv=None) -> int:
     report.add_argument("--run", default="runs/latest", help="pipeline output directory")
     report.add_argument("--out", default=None, help="report path (default <run>/field_report.html)")
 
+    trend = sub.add_parser("trend", help="build a multi-date risk trend from several run dirs")
+    trend.add_argument("--runs", nargs="+", required=True,
+                       help="pipeline output directories, one per flight date")
+    trend.add_argument("--out", default="runs/trend/trend.json")
+    trend.add_argument("--publish-to", default=None, help="copy trend.json to this directory")
+
     args = parser.parse_args(argv)
 
     if args.cmd == "demo":
-        generate_sample_data(args.root, seed=args.seed, fmt=args.format)
+        generate_sample_data(
+            args.root,
+            seed=args.seed,
+            fmt=args.format,
+            capture_date=args.capture_date,
+            hotspot_scale=args.hotspot_scale,
+        )
         cfg = PipelineConfig(
             model_dir=Path(args.root) / "models" / "trained",
             flight_dir=Path(args.root) / "flight",
@@ -55,6 +72,27 @@ def main(argv=None) -> int:
         summary = run_pipeline(cfg, publish_to=args.publish_to)
         print("Demo complete:", summary["tier_counts"])
         print("Outputs in:", Path(args.out).resolve())
+        return 0
+
+    if args.cmd == "trend":
+        from .trend import build_trend, write_trend
+
+        trend_data = build_trend(args.runs)
+        out = write_trend(trend_data, args.out)
+        if args.publish_to:
+            pub = Path(args.publish_to)
+            pub.mkdir(parents=True, exist_ok=True)
+            shutil.copy(out, pub / "trend.json")
+            print("Published trend.json to", (pub / "trend.json").resolve())
+        counts = trend_data["tile_trend_counts"]
+        print(
+            f"Trend over {trend_data['n_dates']} flights "
+            f"({trend_data['first_date']} -> {trend_data['last_date']}): "
+            f"field {trend_data['field_trend']} ({trend_data['field_delta']:+.3f}); "
+            f"tiles worsening={counts['worsening']} stable={counts['stable']} "
+            f"improving={counts['improving']} new={counts['new']}"
+        )
+        print("Trend written:", out.resolve())
         return 0
 
     if args.cmd == "report":

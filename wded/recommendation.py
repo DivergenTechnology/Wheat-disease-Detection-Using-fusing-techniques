@@ -29,10 +29,24 @@ DISEASE_NOTES = {
     "fusarium": "If the crop is at anthesis, assess FHB and DON mycotoxin risk before harvest.",
 }
 
+# Escalation speed and re-scouting cadence per tier (days until the block
+# should be re-flown / re-scouted after the current observation).
+TIER_URGENCY = {
+    "critical": "immediate - act within 24 h",
+    "high": "urgent - act within 48 h",
+    "moderate": "elevated - monitor within 72 h",
+    "low": "routine - next scheduled flight",
+}
+TIER_RESCOUT_DAYS = {"critical": 3, "high": 5, "moderate": 7, "low": 14}
+
 
 def generate_recommendation(fused: pd.DataFrame) -> pd.DataFrame:
     df = fused.copy()
     df["recommendation"] = df["overall_tier"].map(TIER_ACTIONS)
+    df["urgency"] = df["overall_tier"].map(TIER_URGENCY)
+    df["rescout_days"] = (
+        df["overall_tier"].map(TIER_RESCOUT_DAYS).astype("int64")
+    )
     df["disease_note"] = (
         df["dominant_disease"].map(DISEASE_NOTES).fillna("Confirm symptoms before treatment.")
     )
