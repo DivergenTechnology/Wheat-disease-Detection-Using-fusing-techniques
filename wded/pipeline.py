@@ -85,6 +85,7 @@ def run_pipeline(config: PipelineConfig, publish_to: str | None = None) -> dict:
         shutil.copy(out_dir / "risk_polygons.geojson", pub / "latest_risk.geojson")
         shutil.copy(out_dir / "attention_heatmap.geojson", pub / "latest_attention.geojson")
         shutil.copy(out_dir / "summary.json", pub / "summary.json")
+        shutil.copy(out_dir / "field_report.html", pub / "field_report.html")
         log.info("Published dashboard artifacts to %s", pub)
 
     return summary

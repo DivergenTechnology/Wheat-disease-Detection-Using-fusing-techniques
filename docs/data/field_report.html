@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>WDED Field Risk Report - bishoftu - 2026-09-18</title>
+<style>
+:root{--graphite:#1A2330;--graphite2:#232E40;--orange:#D4875A;--ink:#1E2733;
+--muted:#6B7686;--line:#DCE1E8;--paper:#FFFFFF;--wash:#F4F6F8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',-apple-system,Helvetica,Arial,sans-serif;color:var(--ink);
+background:var(--wash);padding:24px}
+.page{max-width:900px;margin:0 auto;background:var(--paper);border:1px solid var(--line)}
+header{background:var(--graphite);color:#E8ECF1;padding:26px 32px}
+header h1{font-size:21px;font-weight:650;letter-spacing:.3px}
+header .sub{color:#9AA7B8;font-size:12.5px;margin-top:6px}
+header .badge{display:inline-block;background:var(--orange);color:#fff;font-size:11px;
+padding:2px 10px;border-radius:10px;margin-left:8px;vertical-align:middle}
+section{padding:22px 32px;border-bottom:1px solid var(--line)}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:14px}
+.kpis{display:flex;gap:14px;flex-wrap:wrap}
+.kpi{flex:1;min-width:150px;background:var(--wash);border:1px solid var(--line);
+border-radius:6px;padding:14px 16px}
+.kpi .num{font-size:26px;font-weight:700}
+.kpi .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px}
+.bar{display:flex;height:30px;border-radius:5px;overflow:hidden;font-size:12px;color:#fff}
+.bar div{display:flex;align-items:center;justify-content:center;min-width:34px}
+.legend{display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;background:var(--graphite2);color:#E8ECF1;padding:7px 10px;font-weight:600}
+td{padding:7px 10px;border-bottom:1px solid var(--line)}
+tr:nth-child(even) td{background:#FAFBFC}
+.tier{display:inline-block;padding:1px 9px;border-radius:9px;color:#fff;font-size:11px;font-weight:600}
+.flag{color:#8C3B2E;font-weight:600}
+.ok{color:#5F7A5A;font-weight:600}
+footer{padding:16px 32px;color:var(--muted);font-size:11.5px;line-height:1.6}
+@media print{body{padding:0;background:#fff}.page{border:none}section{page-break-inside:avoid}}
+</style></head><body>
+<div class="page">
+<header>
+  <h1>WDED Field Risk Report<span class="badge">bishoftu</span></h1>
+  <div class="sub">Flight date 2026-09-18 &middot; 16 tiles &middot;
+  generated 2026-09-27T18:07:02+00:00 &middot; ACTION REQUIRED</div>
+</header>
+
+<section>
+  <h2>Field summary</h2>
+  <div class="kpis">
+    <div class="kpi"><div class="num">16</div><div class="lbl">tiles analysed</div></div>
+    <div class="kpi"><div class="num">0.412</div><div class="lbl">mean fused risk</div></div>
+    <div class="kpi"><div class="num">3</div><div class="lbl">high / critical tiles</div></div>
+    <div class="kpi"><div class="num">7</div><div class="lbl">expert review queue</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Tier distribution</h2>
+  <div class="bar"><div style="width:18.8%;background:#D4875A" title="high: 3">3</div><div style="width:81.2%;background:#C9A227" title="moderate: 13">13</div></div><div class="legend"><span><i style="background:#D4875A"></i>high: 3</span><span><i style="background:#C9A227"></i>moderate: 13</span></div>
+</section>
+
+<section>
+  <h2>Disease pressure by pathogen</h2>
+  <table><tr><th>Disease</th><th>Mean p</th><th>Max p</th><th>Tiles p &ge; 0.50</th><th>Dominant tiles</th></tr><tr><td>Stem rust</td><td>0.298</td><td>0.694</td><td>1 of 16</td><td>2</td></tr><tr><td>Stripe rust</td><td>0.381</td><td>0.609</td><td>2 of 16</td><td>7</td></tr><tr><td>Leaf rust</td><td>0.310</td><td>0.565</td><td>1 of 16</td><td>0</td></tr><tr><td>Septoria (STB)</td><td>0.371</td><td>0.570</td><td>1 of 16</td><td>7</td></tr><tr><td>Fusarium (FHB)</td><td>0.062</td><td>0.251</td><td>0 of 16</td><td>0</td></tr></table>
+</section>
+
+<section>
+  <h2>Top-risk tiles</h2>
+  <table><tr><th>Tile</th><th>Dominant disease</th><th>Model p</th><th>Fused risk</th><th>Tier</th><th>Recommended action</th></tr><tr><td>T0005</td><td>Stem rust</td><td>0.694</td><td>0.581</td><td><span class="tier" style="background:#D4875A">HIGH</span></td><td>Confirmatory scouting within 48 h; prepare the spray plan; re-fly the block in 5-7 days.</td></tr><tr><td>T0004</td><td>Stem rust</td><td>0.496</td><td>0.483</td><td><span class="tier" style="background:#D4875A">HIGH</span></td><td>Confirmatory scouting within 48 h; prepare the spray plan; re-fly the block in 5-7 days.</td></tr><tr><td>T0010</td><td>Stripe rust</td><td>0.608</td><td>0.476</td><td><span class="tier" style="background:#D4875A">HIGH</span></td><td>Confirmatory scouting within 48 h; prepare the spray plan; re-fly the block in 5-7 days.</td></tr><tr><td>T0001</td><td>Septoria (STB)</td><td>0.395</td><td>0.419</td><td><span class="tier" style="background:#C9A227">MODERATE</span></td><td>Intensify monitoring: re-flight within 72 h and scout flagged tiles; watch the 7-day weather forecast for infection windows.</td></tr><tr><td>T0014</td><td>Stripe rust</td><td>0.432</td><td>0.409</td><td><span class="tier" style="background:#C9A227">MODERATE</span></td><td>Intensify monitoring: re-flight within 72 h and scout flagged tiles; watch the 7-day weather forecast for infection windows.</td></tr><tr><td>T0002</td><td>Septoria (STB)</td><td>0.372</td><td>0.404</td><td><span class="tier" style="background:#C9A227">MODERATE</span></td><td>Intensify monitoring: re-flight within 72 h and scout flagged tiles; watch the 7-day weather forecast for infection windows.</td></tr><tr><td>T0011</td><td>Stripe rust</td><td>0.402</td><td>0.404</td><td><span class="tier" style="background:#C9A227">MODERATE</span></td><td>Intensify monitoring: re-flight within 72 h and scout flagged tiles; watch the 7-day weather forecast for infection windows.</td></tr><tr><td>T0006</td><td>Stripe rust</td><td>0.357</td><td>0.395</td><td><span class="tier" style="background:#C9A227">MODERATE</span></td><td>Intensify monitoring: re-flight within 72 h and scout flagged tiles; watch the 7-day weather forecast for infection windows.</td></tr></table>
+</section>
+
+<section>
+  <h2>Expert review queue (7 tiles)</h2>
+  <table><tr><th>Tile</th><th>Dominant disease</th><th>Model p</th><th>MC uncertainty</th><th>Tier</th></tr><tr><td>T0004</td><td>Stem rust</td><td>0.496</td><td>0.068</td><td><span class="tier" style="background:#D4875A">HIGH</span></td></tr><tr><td>T0001</td><td>Septoria (STB)</td><td>0.395</td><td>0.063</td><td><span class="tier" style="background:#C9A227">MODERATE</span></td></tr><tr><td>T0014</td><td>Stripe rust</td><td>0.432</td><td>0.056</td><td><span class="tier" style="background:#C9A227">MODERATE</span></td></tr><tr><td>T0002</td><td>Septoria (STB)</td><td>0.372</td><td>0.050</td><td><span class="tier" style="background:#C9A227">MODERATE</span></td></tr><tr><td>T0011</td><td>Stripe rust</td><td>0.402</td><td>0.059</td><td><span class="tier" style="background:#C9A227">MODERATE</span></td></tr><tr><td>T0006</td><td>Stripe rust</td><td>0.357</td><td>0.051</td><td><span class="tier" style="background:#C9A227">MODERATE</span></td></tr><tr><td>T0009</td><td>Stripe rust</td><td>0.357</td><td>0.047</td><td><span class="tier" style="background:#C9A227">MODERATE</span></td></tr></table>
+  <p style="margin-top:10px;font-size:11.5px;color:var(--muted)">
+  Tiles enter this queue when MC-Dropout uncertainty exceeds the threshold or the
+  maximum disease probability sits in the open-set ambiguous zone [0.35, 0.55).</p>
+</section>
+
+<footer>
+  Fusion weights: model 0.5 &middot; weather 0.3 &middot;
+  soil 0.2. Risk = weighted blend of SSCNN disease probabilities,
+  lagged infection-window weather priors and soil suitability, with asymmetric-cost
+  tier escalation (missed infection &asymp; 5&times; false alarm).<br/>
+  Generated by WDED (Wheat Disease Early Detection) &middot; decision-support only -
+  confirm with ground scouting before chemical intervention.
+</footer>
+</div>
+</body></html>
