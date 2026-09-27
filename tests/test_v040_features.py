@@ -125,5 +125,9 @@ def test_js_recommendation_tables_match_python():
 
 
 def test_pyproject_version_bumped():
+    """Version must be at least 0.4.0 (the field-submission release)."""
     pyproject = (DOCS.parent / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'version = "0.4.0"' in pyproject
+    match = re.search(r'version = "(\d+)\.(\d+)\.(\d+)"', pyproject)
+    assert match, "pyproject version not found"
+    version = tuple(int(p) for p in match.groups())
+    assert version >= (0, 4, 0), f"version {version} regressed below 0.4.0"

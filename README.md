@@ -184,6 +184,18 @@ analysis breakdown and can be attached to future `wded` runs.
 WDEDSubmit.analyze({ field, weather, soil, reflectance })
 ```
 
+## Disease knowledge guide (v0.5.0)
+
+The **Disease guide** tab carries a field reference for the five target diseases
+(stem rust, stripe rust, leaf rust, septoria, fusarium head blight): symptoms,
+the exact infection conditions the weather prior evaluates (mirrored from
+`wded/alignment.py`), what the multispectral model sees per disease, local risk
+factors, and cultural / chemical / resistance management. It is **correlated
+with predictions**: cards show which diseases were the dominant risk driver in
+the latest flight and in how many tiles, risk-map popups deep-link to the
+matching guide (`📖 open disease guide`), and field-submission results offer a
+guide button for their dominant disease. The UI uses a light agronomy theme.
+
 ## Decision logic (transparent by design)
 
 ```

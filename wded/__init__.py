@@ -6,6 +6,6 @@ leaf rust, Septoria, Fusarium) before visible symptoms, and converts them into
 calibrated, actionable field risk tiers.
 """
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 from .config import DISEASES, RISK_TIERS, FusionWeights, PipelineConfig  # noqa: F401

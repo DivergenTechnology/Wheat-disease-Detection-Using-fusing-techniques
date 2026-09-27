@@ -369,9 +369,9 @@ function renderResult(sub) {
 
   parts.push('<h3>Evidence contribution</h3>');
   const contrib = [
-    ['spectral (0.5×)', a.spectral_scores[a.dominant_disease], WEIGHTS.spectral, '#D4875A'],
-    ['weather (0.3×)', a.weather_priors[a.dominant_disease], WEIGHTS.weather, '#6fa8dc'],
-    ['soil (0.2×)', a.soil_score, WEIGHTS.soil, '#8fd694'],
+    ['spectral (0.5×)', a.spectral_scores[a.dominant_disease], WEIGHTS.spectral, '#C9971C'],
+    ['weather (0.3×)', a.weather_priors[a.dominant_disease], WEIGHTS.weather, '#4A7FB5'],
+    ['soil (0.2×)', a.soil_score, WEIGHTS.soil, '#3D6B35'],
   ];
   contrib.forEach(([label, raw, w, color]) => {
     parts.push(barRow(label, 100 * raw * w, color, (100 * raw * w).toFixed(1) + ' pp of ' + (100 * raw).toFixed(1) + '%'));
@@ -402,6 +402,7 @@ function renderResult(sub) {
   parts.push('<div class="fsBtns">' +
     '<button class="act" id="fs_save">💾 Save to field log</button>' +
     '<button class="act" id="fs_download">⬇ JSON payload</button>' +
+    '<button class="act" id="fs_guide">📖 Disease guide: ' + esc(DISEASE_LABEL[a.dominant_disease]) + '</button>' +
     ((sub.field.lat != null || sub.field.field_id) ? '<button class="act" id="fs_map">📍 Show on map</button>' : '') +
     '</div>');
 
@@ -410,6 +411,10 @@ function renderResult(sub) {
 
   $('fs_save').addEventListener('click', () => saveSubmission(sub));
   $('fs_download').addEventListener('click', () => downloadJSON(sub, fileNameFor(sub)));
+  $('fs_guide').addEventListener('click', () => {
+    if (window.WDED_KB_OPEN) window.WDED_KB_OPEN(a.dominant_disease);
+    else window.dispatchEvent(new CustomEvent('wded:focus-disease', { detail: { disease: a.dominant_disease } }));
+  });
   const mapBtn = $('fs_map');
   if (mapBtn) {
     mapBtn.addEventListener('click', () => {
