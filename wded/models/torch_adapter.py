@@ -19,11 +19,19 @@ log = logging.getLogger(__name__)
 
 
 def _enable_mc_dropout(model):
-    """Keep the network in eval mode but reactivate Dropout layers for MC sampling."""
+    """Keep the network in eval mode but reactivate Dropout layers for MC sampling.
+
+    Also handles TorchScript modules, whose submodules are RecursiveScriptModule
+    wrappers (isinstance checks fail; ``original_name`` is e.g. ``'Dropout'``).
+    """
     import torch.nn as nn
 
     for m in model.modules():
-        if isinstance(m, nn.Dropout):
+        if isinstance(m, (nn.Dropout, nn.modules.dropout._DropoutNd)):
+            m.train()
+            continue
+        original = str(getattr(m, "original_name", "")).rsplit(".", 1)[-1]
+        if original.startswith("Dropout"):
             m.train()
 
 
@@ -66,7 +74,11 @@ class TorchSSCNNAdapter:
             return None
         cams = t.relu((self._acts * self._grads).sum(dim=1))          # (N, h, w)
         denom = cams.flatten(1).sum(dim=1).clamp_min(1e-9)
-        return (cams.flatten(1) / denom[:, None]).mean(dim=1).detach().cpu().numpy()
+        per_tile = (cams.flatten(1) / denom[:, None]).mean(dim=1)     # focus intensity
+        total = per_tile.sum().clamp_min(1e-9)
+        # normalise so attention sums to 1 across tiles — consistent with the
+        # uniform fallback (attention = share of the model's focus per tile)
+        return (per_tile / total).detach().cpu().numpy()
 
     def predict_with_uncertainty(self, tiles, indices, weather_seq, n_mc=30):
         t = self.torch

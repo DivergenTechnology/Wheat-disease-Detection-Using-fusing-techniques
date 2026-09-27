@@ -51,6 +51,16 @@ def main(argv=None) -> int:
     trend.add_argument("--out", default="runs/trend/trend.json")
     trend.add_argument("--publish-to", default=None, help="copy trend.json to this directory")
 
+    minfo = sub.add_parser(
+        "model-info",
+        help="inspect a local model directory and verify the trained SSCNN integrates",
+    )
+    minfo.add_argument("model_dir", help="directory holding the trained checkpoint")
+    minfo.add_argument("--device", default=None, help="force device (cpu/cuda); default: metadata.json or cpu")
+    minfo.add_argument("--architecture", default=None,
+                       help="import path 'pkg.module:ClassName' for state_dict-only checkpoints")
+    minfo.add_argument("--no-validate", action="store_true", help="skip the forward-contract dry run")
+
     args = parser.parse_args(argv)
 
     if args.cmd == "demo":
@@ -99,6 +109,34 @@ def main(argv=None) -> int:
         out = generate_field_report(args.run, args.out)
         print("Field report written:", out.resolve())
         return 0
+
+    if args.cmd == "model-info":
+        from .models import describe_model_dir
+
+        report = describe_model_dir(
+            args.model_dir,
+            device=args.device,
+            architecture=args.architecture,
+            validate=not args.no_validate,
+        )
+        print("WDED model directory report")
+        print(f"  model_dir     : {report['model_dir']}")
+        print(f"  exists        : {report['exists']}")
+        print(f"  checkpoint    : {report['checkpoint']}")
+        print(f"  format        : {report['checkpoint_format']}")
+        print(f"  architecture  : {report['architecture']}")
+        print(f"  parameters    : {report['n_parameters']}")
+        print(f"  device        : {report['device']}")
+        print(f"  temperature   : {report['temperature']}")
+        print(f"  gradcam_layer : {report['gradcam_layer']}")
+        print(f"  dry-run       : {'passed' if report['validated'] else 'skipped'}")
+        if report["ok"]:
+            print("\nModel integrated successfully. Run the pipeline with:")
+            print(f"  wded run --model-dir {args.model_dir} --flight-dir <flight_dir>")
+            return 0
+        print(f"\nFAILED: {report['error']}")
+        print("See the README 'Integrate your trained SSCNN' section for supported save formats.")
+        return 1
 
     cfg = PipelineConfig(
         model_dir=Path(args.model_dir),

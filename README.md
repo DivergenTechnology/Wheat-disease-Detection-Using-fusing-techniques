@@ -127,13 +127,36 @@ a re-scouting cadence (`rescout_days`) per tier.
    (`pip install 'wded[geo]'` — reads via lightweight `tifffile`, or rasterio if installed),
    or provide a `flight/flight.npz` + `flight_meta.json` (affine geotransform, CRS,
    capture date, site id).
-2. **Model checkpoint** — place `model.pt` in the model directory, saved as
-   `torch.save({"model": module, "meta": {...}})`. The module must implement
-   `forward(spectral (N,B,H,W), weather (N,W,F)) -> logits (N, D)` with the disease order
-   `("stem_rust", "stripe_rust", "leaf_rust", "septoria", "fusarium")`.
-   Optional: `metadata.json` (e.g. `{"gradcam_layer": "backbone.6"}`) and
-   `calibration.json` (`{"temperature": 1.42}`).
-3. **Run**:
+2. **Model checkpoint** — place your trained checkpoint (e.g. `model.pt`) in the model
+   directory. The integration loader (`wded.models.integration.integrate_sscnn`)
+   auto-detects the save format:
+
+   | Format | How it was saved | Architecture needed? |
+   |---|---|---|
+   | TorchScript archive | `torch.jit.save(scripted, "model.pt")` | no |
+   | Full pickled module | `torch.save(model, "model.pt")` | no |
+   | Bundle dict | `torch.save({"model": model, "meta": {...}}, ...)` | no |
+   | Weights bundle | `torch.save({"state_dict": sd, ...}, ...)` | yes |
+   | Raw state_dict | `torch.save(model.state_dict(), "weights.pt")` | yes |
+
+   The module must implement `forward(spectral (N,B,H,W), weather (N,W,F)) -> logits (N, D)`
+   with the disease order `("stem_rust", "stripe_rust", "leaf_rust", "septoria", "fusarium")`.
+   For weights-only formats the architecture is resolved from the `architecture=`
+   argument or from `metadata.json` → `{"architecture": "mypkg.models:SpectralSpatialCNN"}`.
+   Optional sidecars: `metadata.json` (e.g. `{"gradcam_layer": "backbone.6", "device": "cpu"}`)
+   and `calibration.json` (`{"temperature": 1.42}`).
+3. **Verify the integration** (recommended before a full run):
+
+```bash
+pip install 'wded[torch]'
+wded model-info models/trained
+```
+
+   This prints what was found (checkpoint, detected format, architecture, parameter
+   count, temperature, Grad-CAM layer), dry-run validates the forward contract
+   against the 5-disease pipeline and exits non-zero with a diagnosis if anything
+   does not fit.
+4. **Run**:
 
 ```bash
 wded run \
@@ -144,6 +167,24 @@ wded run \
   --site bishoftu \
   --publish-to docs/data
 ```
+
+### Integrate your trained SSCNN from Python
+
+```python
+from wded import integrate_sscnn
+
+# any of the save formats above; MC-Dropout + Grad-CAM + temperature scaling
+# are wired automatically from the sidecars
+model = integrate_sscnn("models/trained")                     # auto-detected format
+model = integrate_sscnn("models/trained", device="cuda")      # force device
+model = integrate_sscnn("models/trained", architecture="mypkg.models:SpectralSpatialCNN")
+
+mean_p, std_p, attention = model.predict_with_uncertainty(tiles, None, weather_seq, n_mc=30)
+```
+
+`load_model(config)` (used by `wded run` / `run_pipeline`) routes through the same
+loader, so a checkpoint directory and a mock directory are interchangeable.
+
 
 ## Risk dashboard (GitHub Pages)
 

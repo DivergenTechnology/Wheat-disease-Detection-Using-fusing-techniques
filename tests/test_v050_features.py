@@ -97,5 +97,11 @@ def test_knowledge_index_html_inline_script_still_valid():
 
 
 def test_pyproject_version_bumped_050():
+    """Version must be at least 0.5.0 (the knowledge-module release)."""
+    import re
+
     pyproject = (DOCS.parent / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'version = "0.5.0"' in pyproject
+    match = re.search(r'version = "(\d+)\.(\d+)\.(\d+)"', pyproject)
+    assert match, "pyproject version not found"
+    version = tuple(int(p) for p in match.groups())
+    assert version >= (0, 5, 0), f"version {version} regressed below 0.5.0"
