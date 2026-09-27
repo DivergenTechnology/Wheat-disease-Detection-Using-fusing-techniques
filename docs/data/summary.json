@@ -1,0 +1,45 @@
+{
+  "site": "bishoftu",
+  "flight_date": "2026-09-18",
+  "generated_at": "2026-09-27T14:13:42+00:00",
+  "n_tiles": 16,
+  "tier_counts": {
+    "critical": 0,
+    "high": 3,
+    "moderate": 13,
+    "low": 0
+  },
+  "mean_overall_risk": 0.4123,
+  "expert_review_count": 7,
+  "dominant_disease_counts": {
+    "stem_rust": 2,
+    "stripe_rust": 7,
+    "leaf_rust": 0,
+    "septoria": 7,
+    "fusarium": 0
+  },
+  "fusion_weights": {
+    "model": 0.5,
+    "weather": 0.3,
+    "soil": 0.2
+  },
+  "thresholds": {
+    "uncertainty": 0.08,
+    "open_set": 0.55,
+    "open_set_lower": 0.35
+  },
+  "weather_meta": {
+    "source": "sample_data/weather.csv",
+    "rows": 21,
+    "end": "2026-09-18"
+  },
+  "stages_completed": [
+    "preprocess_new_flight",
+    "load_model",
+    "align_weather_soil",
+    "run_sscnn_inference",
+    "fuse_decision",
+    "generate_recommendation",
+    "build_map_overlay"
+  ]
+}

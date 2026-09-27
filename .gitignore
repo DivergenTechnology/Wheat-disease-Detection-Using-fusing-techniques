@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+dist/
+*.egg-info/
+
+# Local runs and synthetic inputs (published artifacts live in docs/data)
+runs/
+sample_data/

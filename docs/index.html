@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>WDED — Wheat Disease Early Detection · Field Risk Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root{
+  --graphite:#1A2330; --graphite2:#232E40; --orange:#D4875A;
+  --ink:#E8ECF1; --muted:#9AA7B5;
+  --low:#2E7D32; --moderate:#F9A825; --high:#EF6C00; --critical:#B71C1C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--graphite);color:var(--ink)}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;justify-content:space-between;padding:18px 24px;border-bottom:1px solid #2c394d}
+h1{font-size:1.15rem;letter-spacing:.4px}
+h1 span{color:var(--orange)}
+.meta{color:var(--muted);font-size:.85rem}
+main{display:grid;grid-template-columns:1fr 320px;gap:16px;padding:16px 24px}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.cards{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.card{background:var(--graphite2);border:1px solid #2c394d;border-radius:10px;padding:12px 14px}
+.card .v{font-size:1.5rem;font-weight:650}
+.card .k{color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
+#map{height:520px;border-radius:10px;border:1px solid #2c394d}
+.panel{background:var(--graphite2);border:1px solid #2c394d;border-radius:10px;padding:14px;max-height:560px;overflow:auto}
+.panel h2{font-size:.9rem;margin-bottom:8px;color:var(--orange)}
+ul.review{list-style:none}
+ul.review li{padding:8px 0;border-bottom:1px dashed #33415a;font-size:.85rem}
+.badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.7rem;font-weight:600;color:#fff}
+.b-critical{background:var(--critical)}.b-high{background:var(--high)}
+.b-moderate{background:var(--moderate);color:#1A2330}.b-low{background:var(--low)}
+.bars{margin-top:14px}
+.bar-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:.8rem}
+.bar{height:10px;border-radius:5px;background:var(--orange);min-width:2px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;padding:10px 2px 0;color:var(--muted);font-size:.78rem}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.foot{padding:10px 24px 26px;color:var(--muted);font-size:.75rem}
+.warn{background:#3a2b1c;border:1px solid var(--orange);color:#f2c9a8;border-radius:10px;padding:12px 16px;margin:16px 24px 0;font-size:.85rem}
+label.tgl{display:flex;gap:8px;align-items:center;font-size:.8rem;color:var(--muted);margin-top:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>WDED <span>·</span> Wheat Disease Early Detection — Field Risk Dashboard</h1>
+  <div class="meta" id="runmeta">loading run metadata…</div>
+</header>
+<div id="warn" class="warn" style="display:none">
+  No published run found in <code>docs/data/</code>. Generate one with
+  <code>python -m wded.cli demo --publish-to docs/data</code> and commit the artifacts.
+</div>
+<main>
+  <div class="cards" id="cards"></div>
+  <div id="map"></div>
+  <aside class="panel">
+    <h2>Expert review queue</h2>
+    <ul class="review" id="review"></ul>
+    <h2 style="margin-top:16px">Dominant disease</h2>
+    <div class="bars" id="bars"></div>
+    <label class="tgl"><input type="checkbox" id="heat" checked/> show attention heatmap</label>
+    <div class="legend">
+      <span><i style="background:var(--low)"></i>low</span>
+      <span><i style="background:var(--moderate)"></i>moderate</span>
+      <span><i style="background:var(--high)"></i>high</span>
+      <span><i style="background:var(--critical)"></i>critical</span>
+      <span><i style="background:none;border:2px dashed #b388ff"></i>expert review</span>
+    </div>
+  </aside>
+</main>
+<div class="foot">
+  Research prototype — calibrated risk estimates are decision support and do not replace
+  on-ground scouting. Fusion: 0.5 · model + 0.3 · lagged-weather prior + 0.2 · soil score.
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const TIER_COLOR={low:'#2E7D32',moderate:'#F9A825',high:'#EF6C00',critical:'#B71C1C'};
+const map=L.map('map',{zoomControl:true});
+const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'});
+const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'});
+sat.addTo(map);
+L.control.layers({'Satellite (Esri)':sat,'OpenStreetMap':osm}).addTo(map);
+
+let heatLayer=null;
+const heatToggle=document.getElementById('heat');
+heatToggle.addEventListener('change',()=>{
+  if(heatLayer){ heatToggle.checked ? heatLayer.addTo(map) : map.removeLayer(heatLayer); }
+});
+
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function popup(p){
+  const driver=esc((p.dominant_disease||'').replace(/_/g,' '));
+  return `<div style="font:12px/1.5 system-ui;min-width:230px">
+    <b>${esc(p.tile_id)}</b> — <span class="badge b-${esc(p.tier)}">${esc(p.tier)}</span>
+    ${p.needs_expert_review?' <span class="badge" style="background:#6a1b9a">review</span>':''}<br/>
+    overall risk: <b>${(100*p.risk).toFixed(1)}%</b> · driver: ${driver}<br/>
+    model ${Math.round(100*p.model_prob)}% · uncertainty ${p.uncertainty} · attention ${p.attention}<br/>
+    <i>${esc(p.recommendation||'')}</i><br/>
+    <small>${esc(p.disease_note||'')}</small>
+  </div>`;
+}
+
+async function load(){
+  let summary,fc,heat;
+  try{
+    [summary,fc,heat]=await Promise.all([
+      fetch('./data/summary.json').then(r=>r.json()),
+      fetch('./data/latest_risk.geojson').then(r=>r.json()),
+      fetch('./data/latest_attention.geojson').then(r=>r.json())
+    ]);
+  }catch(e){
+    document.getElementById('warn').style.display='block';
+    document.getElementById('runmeta').textContent='no run published';
+    map.setView([8.75,39.0],12);
+    return;
+  }
+  document.getElementById('runmeta').textContent=
+    `site: ${summary.site} · flight ${summary.flight_date} · generated ${(summary.generated_at||'').slice(0,10)}`;
+
+  const tc=summary.tier_counts||{};
+  const cards=[
+    ['Tiles',summary.n_tiles],
+    ['Mean risk',Math.round(100*summary.mean_overall_risk)+'%'],
+    ['Critical',tc.critical||0],
+    ['High',tc.high||0],
+    ['Moderate',tc.moderate||0],
+    ['Low',tc.low||0],
+    ['Review queue',summary.expert_review_count]
+  ];
+  document.getElementById('cards').innerHTML=cards.map(([k,v])=>
+    `<div class="card"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
+
+  const base=L.geoJSON(fc,{
+    style:f=>({color:'#E8ECF1',weight:1,fillColor:TIER_COLOR[f.properties.tier]||'#888',fillOpacity:.55}),
+    onEachFeature:(f,l)=>l.bindPopup(popup(f.properties))
+  }).addTo(map);
+
+  L.geoJSON({type:'FeatureCollection',features:fc.features.filter(f=>f.properties.needs_expert_review)},
+    {style:()=>({color:'#b388ff',weight:2,dashArray:'5 4',fill:false})}).addTo(map);
+
+  map.fitBounds(base.getBounds(),{padding:[12,12]});
+
+  heatLayer=L.geoJSON(heat,{pointToLayer:(f,l)=>L.circleMarker(l,{
+    radius:6+16*(f.properties.weight||0),
+    color:'#D4875A',weight:1,fillColor:'#D4875A',
+    fillOpacity:.25+(f.properties.weight||0)*.5})});
+  if(heatToggle.checked){ heatLayer.addTo(map); }
+
+  const rev=fc.features.map(f=>f.properties).filter(p=>p.needs_expert_review).sort((a,b)=>b.risk-a.risk);
+  document.getElementById('review').innerHTML= rev.length
+    ? rev.map(p=>`<li><b>${esc(p.tile_id)}</b> <span class="badge b-${esc(p.tier)}">${esc(p.tier)}</span><br/>
+        risk ${(100*p.risk).toFixed(1)}% · ${esc((p.dominant_disease||'').replace(/_/g,' '))}</li>`).join('')
+    : '<li>No tiles flagged — uncertainty and open-set checks passed.</li>';
+
+  const dd=summary.dominant_disease_counts||{};
+  const max=Math.max(1,...Object.values(dd));
+  document.getElementById('bars').innerHTML=Object.entries(dd).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+    `<div class="bar-row"><span style="width:110px">${esc(k.replace(/_/g,' '))}</span>
+     <span class="bar" style="width:${Math.round(140*v/max)}px"></span><span>${v}</span></div>`).join('');
+}
+load();
+</script>
+</body>
+</html>
