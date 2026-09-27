@@ -8,7 +8,7 @@ Target diseases: **stem rust** (incl. Ug99 watch), **stripe rust**, **leaf rust*
 **Septoria** (STB), **Fusarium** (FHB).
 
 [![Tests](https://img.shields.io/badge/tests-6%20passing-brightgreen)](#quickstart)
-[![Dashboard](https://img.shields.io/badge/risk%20dashboard-live-D4875A)](https://divergentechnology.github.io/wheat-disease-detection-using-fusing-techniques/)
+[![Dashboard](https://img.shields.io/badge/risk%20dashboard-live-D4875A)](https://divergentechnology.github.io/Wheat-disease-Detection-Using-fusing-techniques/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -101,7 +101,7 @@ wded run \
 
 ## Risk dashboard (GitHub Pages)
 
-The dashboard is served from `docs/` → <https://divergentechnology.github.io/wheat-disease-detection-using-fusing-techniques/>
+The dashboard is served from `docs/` → <https://divergentechnology.github.io/Wheat-disease-Detection-Using-fusing-techniques/>
 
 It renders the fused risk polygons, the Grad-CAM attention layer, the expert review queue,
 and dominant-disease distribution — all from the committed artifacts in `docs/data/`.
