@@ -1,4 +1,4 @@
-"""Command-line entry points: ``wded demo`` and ``wded run``."""
+"""Command-line entry points: ``wded demo``, ``wded run`` and ``wded report``."""
 from __future__ import annotations
 
 import argparse
@@ -8,6 +8,7 @@ from pathlib import Path
 from .config import PipelineConfig
 from .demo import generate_sample_data
 from .pipeline import run_pipeline
+from .report import generate_field_report
 
 
 def main(argv=None) -> int:
@@ -21,6 +22,8 @@ def main(argv=None) -> int:
     demo.add_argument("--root", default="sample_data", help="where synthetic inputs are generated")
     demo.add_argument("--out", default="runs/demo")
     demo.add_argument("--seed", type=int, default=42)
+    demo.add_argument("--format", choices=["npz", "geotiff"], default="npz",
+                      help="synthetic flight format (geotiff exercises the real raster reader)")
     demo.add_argument("--publish-to", default=None, help="copy dashboard artifacts to this directory")
 
     run = sub.add_parser("run", help="run the pipeline on a real flight bundle")
@@ -33,10 +36,14 @@ def main(argv=None) -> int:
     run.add_argument("--date", default="", help="capture date ISO; falls back to flight_meta.json")
     run.add_argument("--publish-to", default=None)
 
+    report = sub.add_parser("report", help="render a printable HTML field risk report from a run")
+    report.add_argument("--run", default="runs/latest", help="pipeline output directory")
+    report.add_argument("--out", default=None, help="report path (default <run>/field_report.html)")
+
     args = parser.parse_args(argv)
 
     if args.cmd == "demo":
-        generate_sample_data(args.root, seed=args.seed)
+        generate_sample_data(args.root, seed=args.seed, fmt=args.format)
         cfg = PipelineConfig(
             model_dir=Path(args.root) / "models" / "trained",
             flight_dir=Path(args.root) / "flight",
@@ -48,6 +55,11 @@ def main(argv=None) -> int:
         summary = run_pipeline(cfg, publish_to=args.publish_to)
         print("Demo complete:", summary["tier_counts"])
         print("Outputs in:", Path(args.out).resolve())
+        return 0
+
+    if args.cmd == "report":
+        out = generate_field_report(args.run, args.out)
+        print("Field report written:", out.resolve())
         return 0
 
     cfg = PipelineConfig(

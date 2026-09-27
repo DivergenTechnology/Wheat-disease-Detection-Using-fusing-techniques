@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import csv
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -28,7 +28,42 @@ SITE_META = {
 }
 
 
-def generate_sample_data(root: Path, seed: int = 42) -> dict:
+def _write_geotiff_bands(flight: Path, bands: dict, meta: dict) -> None:
+    """Write one single-band GeoTIFF per band with full geo-referencing tags."""
+    import tifffile
+
+    bands_dir = flight / "bands"
+    bands_dir.mkdir(parents=True, exist_ok=True)
+    gt = meta["geotransform"]                      # [a, b, c, d, e, f] GDAL order
+    sx, sy = float(gt[0]), float(-gt[4])
+    x0, y0 = float(gt[2]), float(gt[5])
+    epsg = int(meta["crs"].split(":")[-1]) if str(meta.get("crs", "")).startswith("EPSG:") else 32637
+    extratags = [
+        # (tag_id, dtype, count, value, write_count) - 12=DOUBLE, 3=SHORT
+        (33550, 12, 3, (sx, sy, 0.0), True),                               # ModelPixelScale
+        (33922, 12, 6, (0.0, 0.0, 0.0, x0, y0, 0.0), True),                # ModelTiepoint
+        # GeoKeyDirectory: header (v1.1.0, 3 keys) + GTModelType=Projected,
+        # GTRasterType=PixelIsArea, ProjectedCSType=<epsg>
+        (34735, 3, 16,
+         (1, 1, 0, 3, 1024, 0, 1, 1, 1025, 0, 1, 1, 3072, 0, 1, epsg), True),
+    ]
+    try:
+        y, m, d = (int(v) for v in str(meta.get("capture_date", "2026-09-18")).split("-"))
+        dt = datetime(y, m, d, 10, 30, 0)
+    except ValueError:
+        dt = datetime(2026, 9, 18, 10, 30, 0)
+    for name, arr in bands.items():
+        tifffile.imwrite(
+            bands_dir / f"{name}.tif",
+            np.ascontiguousarray(arr, dtype=np.float32),
+            photometric="minisblack",
+            metadata=None,
+            datetime=dt,
+            extratags=extratags,
+        )
+
+
+def generate_sample_data(root: Path, seed: int = 42, fmt: str = "npz") -> dict:
     root = Path(root)
     flight = root / "flight"
     flight.mkdir(parents=True, exist_ok=True)
@@ -69,8 +104,11 @@ def generate_sample_data(root: Path, seed: int = 42) -> dict:
             0.01, 0.95,
         ),
     }
-    np.savez_compressed(flight / "flight.npz", **bands)
-    (flight / "flight_meta.json").write_text(json.dumps(SITE_META, indent=2))
+    if fmt == "geotiff":
+        _write_geotiff_bands(flight, bands, SITE_META)
+    else:
+        np.savez_compressed(flight / "flight.npz", **bands)
+        (flight / "flight_meta.json").write_text(json.dumps(SITE_META, indent=2))
 
     model_dir = root / "models" / "trained"
     model_dir.mkdir(parents=True, exist_ok=True)

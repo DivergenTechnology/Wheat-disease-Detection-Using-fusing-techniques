@@ -20,6 +20,7 @@ from .mapping import build_map_overlay
 from .models import load_model
 from .preprocess import preprocess_new_flight
 from .recommendation import generate_recommendation
+from .report import generate_field_report
 
 log = logging.getLogger(__name__)
 
@@ -74,6 +75,9 @@ def run_pipeline(config: PipelineConfig, publish_to: str | None = None) -> dict:
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     log.info("Pipeline finished: tiers=%s review=%d", json.dumps(summary["tier_counts"]), len(review))
+
+    # Stage 7b: printable field report (always emitted next to the artifacts)
+    stage("generate_field_report", lambda: generate_field_report(out_dir))
 
     if publish_to:
         pub = Path(publish_to)

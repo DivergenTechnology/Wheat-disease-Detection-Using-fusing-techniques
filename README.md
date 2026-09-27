@@ -68,19 +68,35 @@ pip install -r requirements.txt
 # Full pipeline on synthetic data (no GPU, no torch needed)
 python -m wded.cli demo --publish-to docs/data
 
+# Exercise the real GeoTIFF reader (no GDAL / rasterio required)
+python -m wded.cli demo --format geotiff
+
 # Run the test suite
 pytest -q
 ```
 
-The demo generates a synthetic Mavic 3M flight (4 bands, three disease hotspots near
-Bishoftu), 60 days of station weather, a soil record, and a mock SSCNN — then runs every
-stage and prints the tier distribution.
+The demo generates a synthetic Mavic 3M flight (4 bands, three spectrally distinct
+disease hotspots near Bishoftu), 60 days of station weather, a soil record, and a mock
+SSCNN — then runs every stage, prints the tier distribution, and leaves a printable
+`field_report.html` next to the artifacts.
+
+## Field report
+
+Every run emits `field_report.html` in the output directory — a self-contained,
+print-ready (A4) summary with KPIs, tier distribution, per-pathogen pressure,
+top-risk tiles and the expert review queue. Regenerate or relocate it any time:
+
+```bash
+wded report --run runs/demo --out reports/bishoftu_2027-07-14.html
+```
 
 ## Using real flights and the trained model
 
-1. **Flight data** — export the orthomosaic as one GeoTIFF per band into
-   `flight/bands/{green,red,red_edge,nir}.tif` (needs `pip install 'wded[geo]'`), or provide a
-   `flight/flight.npz` + `flight_meta.json` (affine geotransform, CRS, capture date, site id).
+1. **Flight data** — export the orthomosaic as one single-band GeoTIFF per band into
+   `flight/bands/{green,red,red_edge,nir}.tif` with geo-referencing metadata
+   (`pip install 'wded[geo]'` — reads via lightweight `tifffile`, or rasterio if installed),
+   or provide a `flight/flight.npz` + `flight_meta.json` (affine geotransform, CRS,
+   capture date, site id).
 2. **Model checkpoint** — place `model.pt` in the model directory, saved as
    `torch.save({"model": module, "meta": {...}})`. The module must implement
    `forward(spectral (N,B,H,W), weather (N,W,F)) -> logits (N, D)` with the disease order

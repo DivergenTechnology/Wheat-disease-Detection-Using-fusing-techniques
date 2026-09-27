@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wded"
-version = "0.1.0"
+version = "0.2.0"
 description = "Early detection of wheat diseases from UAV multispectral imagery fused with lagged weather and soil covariates"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-geo = ["rasterio>=1.3"]
+geo = ["tifffile>=2023.0", "rasterio>=1.3"]
 torch = ["torch>=2.1"]
 dev = ["pytest>=7.4"]
 

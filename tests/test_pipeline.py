@@ -112,3 +112,57 @@ def test_cli_demo(tmp_path):
     rc = cli_main(["demo", "--root", str(tmp_path / "in"), "--out", str(tmp_path / "out")])
     assert rc == 0
     assert (tmp_path / "out" / "summary.json").exists()
+
+
+def test_geotiff_flight_input(tmp_path):
+    """Real-raster path: synthetic bands as GeoTIFFs, read back without rasterio."""
+    pytest.importorskip("tifffile")
+    root = tmp_path / "inputs"
+    generate_sample_data(root, seed=42, fmt="geotiff")
+    assert (root / "flight" / "bands" / "nir.tif").exists()
+    assert not (root / "flight" / "flight.npz").exists()
+
+    cfg = PipelineConfig(
+        model_dir=root / "models" / "trained",
+        flight_dir=root / "flight",
+        weather_csv=root / "weather.csv",
+        soil_csv=root / "soil.csv",
+        output_dir=tmp_path / "runs" / "geo",
+    )
+    summary = run_pipeline(cfg)
+    assert summary["n_tiles"] == 16
+    assert summary["site"] == "bishoftu"
+
+    # georeferencing must survive the GeoTIFF round-trip: tiles fall around Bishoftu
+    fc = json.loads((Path(cfg.output_dir) / "risk_polygons.geojson").read_text())
+    lon, lat = fc["features"][0]["geometry"]["coordinates"][0][0]
+    assert 38.0 < lon < 40.0 and 8.0 < lat < 9.5
+
+
+def test_field_report_generated(demo_env, tmp_path):
+    """Every pipeline run must leave a printable field report next to the artifacts."""
+    cfg = demo_env
+    run_pipeline(cfg)
+    report = Path(cfg.output_dir) / "field_report.html"
+    assert report.exists()
+    text = report.read_text(encoding="utf-8")
+    assert "WDED Field Risk Report" in text
+    assert "bishoftu" in text
+    assert "Top-risk tiles" in text
+    # the demo always produces review tiles - the queue section must list them
+    assert "Expert review queue" in text and "MC uncertainty" in text
+
+    # standalone regeneration via the public API must work too
+    from wded.report import generate_field_report
+
+    alt = generate_field_report(cfg.output_dir, tmp_path / "alt_report.html")
+    assert alt.exists() and alt.stat().st_size > 5_000
+
+
+def test_cli_report(demo_env):
+    cfg = demo_env
+    run_pipeline(cfg)
+    out = Path(cfg.output_dir) / "cli_report.html"
+    rc = cli_main(["report", "--run", str(cfg.output_dir), "--out", str(out)])
+    assert rc == 0
+    assert out.exists()

@@ -14,6 +14,12 @@ log = logging.getLogger(__name__)
 
 EPS = 1e-6
 
+# GeoTIFF tag ids (TIFF 6.0 / GeoTIFF 1.1)
+_TAG_MODEL_PIXEL_SCALE = 33550
+_TAG_MODEL_TIEPOINT = 33922
+_TAG_GEOKEY_DIRECTORY = 34735
+_KEY_PROJECTED_CS = 3072  # ProjectedCSTypeGeoKey
+
 
 @dataclass
 class FlightData:
@@ -26,12 +32,95 @@ class FlightData:
     meta: dict             # crs, geotransform (affine), capture_date, site_id, ...
 
 
+def _normalize_tiff_datetime(raw) -> str | None:
+    """Best-effort ISO date from a TIFF DateTime value ('YYYY:MM:DD HH:MM:SS')."""
+    if raw is None:
+        return None
+    if isinstance(raw, bytes):
+        raw = raw.decode("ascii", "ignore")
+    raw = str(raw).strip()
+    if len(raw) < 10:
+        return None
+    return f"{raw[0:4]}-{raw[5:7]}-{raw[8:10]}"
+
+
+def _read_geotiff_rasterio(tifs):
+    """Read single-band GeoTIFFs with rasterio (heaviest, most complete reader)."""
+    import rasterio  # optional heavy dependency
+
+    by_name, profile = {}, None
+    for t in tifs:
+        name = t.stem.lower()
+        with rasterio.open(t) as src:
+            by_name[name] = src.read(1).astype(np.float32)
+            if profile is None:
+                crs = src.crs.to_string() if src.crs is not None else None
+                if not crs:
+                    log.warning("No CRS in %s - assuming EPSG:32637 (Bishoftu UTM 37N)", t.name)
+                    crs = "EPSG:32637"
+                profile = {
+                    "crs": crs,
+                    "geotransform": list(src.transform)[:6],
+                    "capture_date": _normalize_tiff_datetime(src.tags().get("TIFFTAG_DATETIME")),
+                }
+    return by_name, profile
+
+
+def _read_geotiff_tifffile(tifs):
+    """Read single-band GeoTIFFs with tifffile (light reader, no GDAL needed).
+
+    Reconstructs the GDAL-style affine geotransform from the ModelPixelScale /
+    ModelTiepoint tags and the projected CRS from the GeoKey directory.  Only
+    north-up, single-band, pixel-is-area rasters are supported (the usual
+    orthomosaic export layout).
+    """
+    import tifffile  # optional light dependency
+
+    by_name, profile = {}, None
+    for t in tifs:
+        name = t.stem.lower()
+        with tifffile.TiffFile(t) as tif:
+            page = tif.pages[0]
+            by_name[name] = page.asarray().astype(np.float32)
+            if profile is not None:
+                continue
+            try:
+                scale = page.tags[_TAG_MODEL_PIXEL_SCALE].value
+                tie = page.tags[_TAG_MODEL_TIEPOINT].value
+            except KeyError as exc:
+                raise ValueError(
+                    f"{t.name} lacks GeoTIFF geo-referencing tags "
+                    f"(ModelPixelScale/ModelTiepoint); export with CRS metadata"
+                ) from exc
+            sx, sy = float(scale[0]), float(scale[1])
+            i, j, x_tie, y_tie = float(tie[0]), float(tie[1]), float(tie[3]), float(tie[4])
+            # raster (i, j) -> world: x = x_tie + (i - i_tie)*sx, y = y_tie - (j - j_tie)*sy
+            x0, y0 = x_tie - i * sx, y_tie + j * sy
+            gt = [sx, 0.0, x0, 0.0, -sy, y0]
+            crs = None
+            gk = page.tags.get(_TAG_GEOKEY_DIRECTORY)
+            if gk is not None:
+                vals = gk.value
+                for n in range(4, len(vals) - 3, 4):
+                    if vals[n] == _KEY_PROJECTED_CS:
+                        crs = f"EPSG:{int(vals[n + 3])}"
+                        break
+            if crs is None:
+                log.warning("No projected CRS GeoKey in %s - assuming EPSG:32637 (Bishoftu UTM 37N)", t.name)
+                crs = "EPSG:32637"
+            dt_tag = page.tags.get("DateTime")
+            profile = {"crs": crs, "geotransform": gt, "capture_date": _normalize_tiff_datetime(dt_tag.value if dt_tag else None)}
+    return by_name, profile
+
+
 def load_band_stack(flight_dir: Path, band_order):
     """Load the pre-processed band stack for one flight.
 
     Supported inputs (checked in order):
       1. ``flight.npz`` (one array per band) with ``flight_meta.json`` beside it.
-      2. ``bands/<band>.tif`` GeoTIFFs exported from the orthomosaic (needs rasterio).
+      2. ``bands/<band>.tif`` GeoTIFFs exported from the orthomosaic, read with
+         rasterio when available, otherwise with the lightweight tifffile
+         (``pip install 'wded[geo]'``).
     """
     flight_dir = Path(flight_dir)
     npz = flight_dir / "flight.npz"
@@ -48,21 +137,19 @@ def load_band_stack(flight_dir: Path, band_order):
         return stack, meta
 
     bands_dir = flight_dir / "bands"
-    tifs = sorted(bands_dir.glob("*.tif")) if bands_dir.exists() else []
+    tifs = sorted(bands_dir.glob("*.tif")) + sorted(bands_dir.glob("*.tiff")) if bands_dir.exists() else []
     if tifs:
         try:
-            import rasterio  # optional heavy dependency
-        except ImportError as exc:  # pragma: no cover
-            raise ImportError(
-                "Install rasterio to read GeoTIFF flights: pip install 'wded[geo]'"
-            ) from exc
-        by_name, profile = {}, None
-        for t in tifs:
-            name = t.stem.lower()
-            with rasterio.open(t) as src:
-                by_name[name] = src.read(1).astype(np.float32)
-                if profile is None:
-                    profile = {"crs": src.crs.to_string(), "geotransform": list(src.transform)[:6]}
+            by_name, profile = _read_geotiff_rasterio(tifs)
+        except ImportError:
+            log.info("rasterio not available - falling back to tifffile GeoTIFF reader")
+            try:
+                by_name, profile = _read_geotiff_tifffile(tifs)
+            except ImportError as exc:
+                raise ImportError(
+                    "Install a GeoTIFF reader to read GeoTIFF flights: "
+                    "pip install 'wded[geo]' (tifffile, lightweight) or rasterio"
+                ) from exc
         missing = [b for b in band_order if b not in by_name]
         if missing:
             raise ValueError(f"GeoTIFF band files missing for: {missing} (found {sorted(by_name)})")
@@ -70,8 +157,8 @@ def load_band_stack(flight_dir: Path, band_order):
         meta = {
             "crs": profile["crs"],
             "geotransform": profile["geotransform"],
-            "capture_date": None,
-            "site_id": flight_dir.parent.name,
+            "capture_date": profile.get("capture_date"),
+            # site_id intentionally unset -> preprocess falls back to config.site_id
         }
         return stack, meta
 
