@@ -57,6 +57,52 @@ label.tgl{display:flex;gap:8px;align-items:center;font-size:.8rem;color:var(--mu
 .tw{background:#4a2c17;color:#ffb27d}.ts{background:#263449;color:#9AA7B5}
 .ti{background:#1d3a22;color:#8fd694}.tn{background:#3a2f55;color:#c3b0ff}
 .arrow{font-weight:700}
+[hidden]{display:none!important}
+.tabs{display:flex;gap:6px;padding:12px 24px 0}
+.tab{background:var(--graphite2);border:1px solid #2c394d;border-bottom:none;color:var(--muted);
+     border-radius:8px 8px 0 0;padding:7px 16px;font-size:.82rem;cursor:pointer}
+.tab.on{color:var(--ink);border-color:var(--orange);background:var(--graphite2)}
+#tabSubmit{padding:0 24px 26px}
+.fsWrap{display:grid;grid-template-columns:1.25fr .9fr;gap:16px;align-items:start}
+@media(max-width:1100px){.fsWrap{grid-template-columns:1fr}}
+.fsForm,.fsSide .panel{background:var(--graphite2);border:1px solid #2c394d;border-radius:10px;padding:14px 16px}
+fieldset{border:1px solid #33415a;border-radius:8px;padding:10px 12px;margin:0 0 12px;min-width:0}
+legend{color:var(--orange);font-size:.74rem;letter-spacing:.6px;text-transform:uppercase;padding:0 6px}
+.fsGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fsField{display:flex;flex-direction:column;gap:3px;min-width:0}
+.fsField.wide{grid-column:1/-1}
+.fsField label{font-size:.72rem;color:var(--muted)}
+#tabSubmit input,#tabSubmit select{background:var(--graphite);color:var(--ink);border:1px solid #33415a;
+  border-radius:8px;padding:6px 8px;font-size:.85rem;width:100%}
+#tabSubmit input:focus,#tabSubmit select:focus{outline:none;border-color:var(--orange)}
+.fsBad{border-color:#e53935!important}
+.fsErr{background:#3a1c1c;border:1px solid #e53935;color:#ffb3b3;border-radius:8px;
+  padding:10px 14px;font-size:.8rem;margin-bottom:12px}
+.fsErr ul{margin:6px 0 0 18px}
+.fsActions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.fsPrimary{font-size:.9rem;padding:8px 18px}
+button.ghost{background:none;border:1px solid #33415a;color:var(--muted);border-radius:8px;
+  padding:6px 12px;font-size:.78rem;cursor:pointer}
+button.ghost:hover{color:var(--ink);border-color:var(--orange)}
+#fs_result h3{font-size:.76rem;color:var(--orange);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.6px}
+.fsHead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.fsRisk{font-size:.95rem}
+.fsDriver{color:var(--muted);font-size:.85rem}
+.fsIdx{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.fsIdxChip{background:var(--graphite);border:1px solid #33415a;border-radius:8px;padding:5px 9px;font-size:.75rem}
+.fsRec{background:var(--graphite);border:1px solid #33415a;border-left:3px solid var(--orange);
+  border-radius:8px;padding:10px 14px;margin-top:12px}
+.fsRec p{font-size:.85rem;margin:6px 0}
+.fsFine{color:var(--muted);font-size:.72rem!important}
+.fsBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.fsTable{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:8px}
+.fsTable th{color:var(--muted);text-align:left;font-weight:500;padding:4px 6px;border-bottom:1px solid #33415a}
+.fsTable td{padding:5px 6px;border-bottom:1px dashed #2c394d}
+button.mini{background:none;border:1px solid #33415a;color:var(--muted);border-radius:6px;
+  padding:1px 6px;cursor:pointer;font-size:.72rem}
+button.mini:hover{color:var(--ink);border-color:var(--orange)}
+.fsRowBtns{white-space:nowrap}
+.fsHint{color:var(--muted);font-size:.72rem;margin-top:4px}
 </style>
 </head>
 <body>
@@ -64,11 +110,15 @@ label.tgl{display:flex;gap:8px;align-items:center;font-size:.8rem;color:var(--mu
   <h1>WDED <span>·</span> Wheat Disease Early Detection — Field Risk Dashboard</h1>
   <div class="meta" id="runmeta">loading run metadata…</div>
 </header>
+<nav class="tabs">
+  <button class="tab on" data-tab="map" type="button">Risk map</button>
+  <button class="tab" data-tab="submit" type="button">Field data submission</button>
+</nav>
 <div id="warn" class="warn" style="display:none">
   No published run found in <code>docs/data/</code>. Generate one with
   <code>python -m wded.cli demo --publish-to docs/data</code> and commit the artifacts.
 </div>
-<main>
+<main id="tabMap">
   <div class="cards" id="cards"></div>
   <div id="trendPanel" style="display:none">
     <h2>Multi-flight risk trend</h2>
@@ -105,9 +155,123 @@ label.tgl{display:flex;gap:8px;align-items:center;font-size:.8rem;color:var(--mu
     </div>
   </aside>
 </main>
+<section id="tabSubmit" hidden>
+  <div class="fsWrap">
+    <form id="fsForm" novalidate>
+      <div id="fs_errors" class="fsErr" style="display:none"></div>
+      <div class="fsCols">
+        <fieldset>
+          <legend>Field &amp; observation</legend>
+          <div class="fsGrid">
+            <div class="fsField"><label for="fs_field_id">field / block ID (or nearest tile)</label>
+              <input id="fs_field_id" type="text" placeholder="e.g. BISH-NE-07 or T0007"/></div>
+            <div class="fsField"><label for="fs_date">observation date</label>
+              <input id="fs_date" type="date" required/></div>
+            <div class="fsField"><label for="fs_lat">GPS latitude (optional)</label>
+              <input id="fs_lat" type="number" step="0.0001" placeholder="8.75"/></div>
+            <div class="fsField"><label for="fs_lon">GPS longitude (optional)</label>
+              <input id="fs_lon" type="number" step="0.0001" placeholder="39.00"/></div>
+            <div class="fsField"><label for="fs_stage">growth stage</label>
+              <select id="fs_stage"><option value="">select…</option></select></div>
+            <div class="fsField"><label for="fs_observer">observer / extension agent (optional)</label>
+              <input id="fs_observer" type="text" placeholder="name"/></div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Weather — past 21 days (station or local readings)</legend>
+          <div class="fsGrid">
+            <div class="fsField"><label for="fs_temp">mean air temperature (°C)</label>
+              <input id="fs_temp" type="number" step="0.1" placeholder="16.5" required/></div>
+            <div class="fsField"><label for="fs_rh">mean relative humidity (%)</label>
+              <input id="fs_rh" type="number" step="1" min="1" max="100" placeholder="78" required/></div>
+            <div class="fsField"><label for="fs_lwh">leaf wetness (h/day — blank = estimate from RH)</label>
+              <input id="fs_lwh" type="number" step="0.5" min="0" max="24" placeholder="blank = estimate from RH"/></div>
+            <div class="fsField"><label for="fs_rain">rainfall total (mm, 21 days)</label>
+              <input id="fs_rain" type="number" step="0.1" min="0" placeholder="38" required/></div>
+          </div>
+          <div class="fsHint">Infection windows: stripe rust 5–20 °C · septoria 10–25 °C with 8 h leaf wetness · stem/leaf rust 15–35/30 °C · fusarium 20–30 °C.</div>
+        </fieldset>
+        <fieldset>
+          <legend>Soil properties (field sample or test kit)</legend>
+          <div class="fsGrid">
+            <div class="fsField"><label for="fs_ph">soil pH</label>
+              <input id="fs_ph" type="number" step="0.1" min="3" max="10" placeholder="7.2" required/></div>
+            <div class="fsField"><label for="fs_drainage">drainage class</label>
+              <select id="fs_drainage" required>
+                <option value="">select…</option>
+                <option value="very_poor">very poor</option>
+                <option value="poor">poor</option>
+                <option value="moderate">moderate</option>
+                <option value="good">good</option>
+                <option value="excessive">excessive</option>
+              </select></div>
+            <div class="fsField"><label for="fs_prev_cereal">cereal crop previous season (residue)?</label>
+              <select id="fs_prev_cereal">
+                <option value="no">no</option>
+                <option value="yes">yes</option>
+              </select></div>
+            <div class="fsField"><label for="fs_moisture">soil moisture (% — optional)</label>
+              <input id="fs_moisture" type="number" step="0.5" min="0" max="100" placeholder="24"/></div>
+            <div class="fsField"><label for="fs_om">organic matter (% — optional)</label>
+              <input id="fs_om" type="number" step="0.1" min="0" max="25" placeholder="1.8"/></div>
+            <div class="fsField"><label for="fs_n">nitrogen N (mg/kg — optional)</label>
+              <input id="fs_n" type="number" step="1" min="0" placeholder="34"/></div>
+            <div class="fsField"><label for="fs_p">phosphorus P (mg/kg — optional)</label>
+              <input id="fs_p" type="number" step="1" min="0" placeholder="12"/></div>
+            <div class="fsField"><label for="fs_k">potassium K (mg/kg — optional)</label>
+              <input id="fs_k" type="number" step="1" min="0" placeholder="180"/></div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Canopy reflectance (0–1 per band)</legend>
+          <div class="fsGrid">
+            <div class="fsField"><label for="fs_green">green — 560 nm</label>
+              <input id="fs_green" type="number" step="0.005" min="0" max="1" placeholder="0.09" required/></div>
+            <div class="fsField"><label for="fs_red">red — 650 nm</label>
+              <input id="fs_red" type="number" step="0.005" min="0" max="1" placeholder="0.075" required/></div>
+            <div class="fsField"><label for="fs_red_edge">red edge — 730 nm</label>
+              <input id="fs_red_edge" type="number" step="0.005" min="0" max="1" placeholder="0.27" required/></div>
+            <div class="fsField"><label for="fs_nir">NIR — 840 nm</label>
+              <input id="fs_nir" type="number" step="0.005" min="0" max="1" placeholder="0.40" required/></div>
+            <div class="fsField wide"><label for="fs_refl_source">reading source</label>
+              <select id="fs_refl_source">
+                <option value="handheld">handheld radiometer</option>
+                <option value="drone">drone-derived (this flight)</option>
+                <option value="phone">phone app estimate</option>
+                <option value="other">other</option>
+              </select></div>
+          </div>
+          <div class="fsHint">Values feed NDVI · NDRE · GNDVI; drops below healthy baselines (NDVI 0.75 · NDRE 0.30 · GNDVI 0.62) raise the spectral signature score.</div>
+        </fieldset>
+      </div>
+      <div class="fsActions">
+        <button type="submit" class="act fsPrimary">Analyze &amp; recommend</button>
+        <button type="button" class="ghost" id="fs_example">load example values</button>
+        <button type="button" class="ghost" id="fs_reset">reset</button>
+      </div>
+    </form>
+    <div class="fsSide">
+      <div id="fs_result" class="panel" style="display:none"></div>
+      <div id="fs_history" class="panel" style="display:none">
+        <h2>Field log (stored in this browser)</h2>
+        <table class="fsTable">
+          <thead><tr><th>date</th><th>field</th><th>risk</th><th>tier</th><th>driver</th><th></th></tr></thead>
+          <tbody id="fs_history_body"></tbody>
+        </table>
+        <div class="fsBtns">
+          <button class="act" id="fs_csv" type="button">⬇ CSV</button>
+          <button class="act" id="fs_json" type="button">⬇ JSON</button>
+          <button class="ghost" id="fs_clear" type="button">clear log</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 <div class="foot">
   Research prototype — calibrated risk estimates are decision support and do not replace
   on-ground scouting. Fusion: 0.5 · model + 0.3 · lagged-weather prior + 0.2 · soil score.
+  The <b>Field data submission</b> tab analyses locally collected weather, soil and reflectance
+  observations with the same fusion engine and returns a farmer recommendation.
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -123,6 +287,7 @@ const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZ
 const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'});
 sat.addTo(map);
 L.control.layers({'Satellite (Esri)':sat,'OpenStreetMap':osm}).addTo(map);
+window.WDED_MAP = map;
 
 let heatLayer=null;
 const heatToggle=document.getElementById('heat');
@@ -254,6 +419,7 @@ async function load(){
     return;
   }
   SUMMARY=summary;
+  window.WDED_SUMMARY = SUMMARY;
   TREND=await fetch('./data/trend.json').then(r=>r.ok?r.json():null).catch(()=>null);
 
   const tchip=TREND?` · trend: ${TREND.n_dates} flights`:' · single flight';
@@ -315,6 +481,35 @@ async function load(){
   renderTrendPanel();
 }
 load();
+
+/* --- tab navigation + focus hook for the field-submission module --- */
+function showTab(name){
+  document.getElementById('tabMap').hidden = name!=='map';
+  document.getElementById('tabSubmit').hidden = name!=='submit';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.tab===name));
+  if(name==='map') map.invalidateSize();
+}
+window.WDED_SHOW_TAB = showTab;
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>showTab(t.dataset.tab)));
+window.addEventListener('wded:focus-tile', e=>{
+  showTab('map');
+  const d=e.detail||{};
+  let target=null;
+  if(baseLayer && d.tileId){
+    baseLayer.eachLayer(l=>{ if(l.feature.properties.tile_id===d.tileId) target=l; });
+  }
+  if(target){
+    target.setStyle({fillOpacity:.85,weight:3,color:'#D4875A'});
+    map.fitBounds(target.getBounds(),{padding:[48,48]});
+    target.openPopup();
+    setTimeout(()=>target.setStyle({fillOpacity:.55,weight:1,color:'#E8ECF1'}),4000);
+  }else if(d.lat!=null && d.lon!=null){
+    map.setView([d.lat,d.lon],Math.max(map.getZoom(),14));
+    L.circleMarker([d.lat,d.lon],{radius:11,color:'#D4875A',weight:2,fillColor:'#D4875A',fillOpacity:.45})
+      .addTo(map).bindPopup('submitted field: '+esc(d.tileId||'(unnamed)')).openPopup();
+  }
+});
 </script>
+<script src="./field_submission.js"></script>
 </body>
 </html>

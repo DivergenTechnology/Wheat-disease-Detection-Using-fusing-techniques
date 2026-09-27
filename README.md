@@ -156,6 +156,34 @@ and worsening/stable/improving badges. Tiles can be filtered by tier and dominan
 disease, and the current selection exported as CSV. To publish a new run:
 `python -m wded.cli run ... --publish-to docs/data`, commit, push.
 
+## Field data submission (farmer / scout intake)
+
+The **Field data submission** tab on the dashboard accepts locally collected
+observations from the study area — no backend required, everything runs in the
+browser with the *same* decision logic as the Python pipeline:
+
+- **Weather** (past 21 days): mean air temperature, mean relative humidity,
+  leaf-wetness hours (auto-estimated from RH when blank) and rainfall total —
+  evaluated against the per-disease infection windows in `wded/alignment.py`.
+- **Soil properties**: pH, drainage class, previous-cereal residue, plus optional
+  moisture / organic-matter / N-P-K context recorded in the payload.
+- **Canopy reflectance** (green 560 / red 650 / red edge 730 / NIR 840 nm, 0–1):
+  converted to NDVI · NDRE · GNDVI and compared against healthy baselines
+  (0.75 / 0.30 / 0.62) to form a transparent spectral-signature score — a
+  stand-in for the SSCNN term until a `model.pt` checkpoint is deployed.
+
+Evidence is fused with the production weights (0.5 spectral + 0.3 weather +
+0.2 soil), tiered with the same boundaries and 5:1 asymmetric-cost escalation,
+and returned as an actionable farmer recommendation (action, urgency,
+re-scout cadence, disease note). Submissions are kept in a local field log
+(localStorage) with CSV/JSON export; each JSON payload carries the full
+analysis breakdown and can be attached to future `wded` runs.
+
+```js
+// engine exposed for testing / reuse:
+WDEDSubmit.analyze({ field, weather, soil, reflectance })
+```
+
 ## Decision logic (transparent by design)
 
 ```
